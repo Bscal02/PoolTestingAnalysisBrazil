@@ -447,5 +447,5 @@ base_completa <- base_completa[-which(base_completa$Idade.x != base_completa$Ida
   select(-c(Idade.y,Sexo.y)) %>% 
   rename(Idade = Idade.x, Sexo = Sexo.x)
 
-write.csv(base_completa,'base_completa.csv', row.names = FALSE)
+write.csv(base_completa,'Dados/base_completa.csv', row.names = FALSE)
 
