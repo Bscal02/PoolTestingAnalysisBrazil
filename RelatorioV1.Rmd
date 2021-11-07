@@ -1,0 +1,106 @@
+---
+title: "Relatório"
+author: "Bernardo"
+date: "07/11/2021"
+output: html_document
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(plyr)
+base_completa <- read.csv('Dados/base_completa.csv')
+```
+
+# Resultados
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+graph <- base_completa %>% select(Resultado.Pool,Idade,Sexo) %>% 
+  mutate(Resultado.Pool = as.factor(ifelse(Resultado.Pool != 'Não Detectável' |
+                                   is.na(Resultado.Pool),
+                                 'Indeterminado/Positivo','Não Detectável')),
+         Idade = as.integer(Idade),
+         Total = 'Todos') %>% 
+  filter(!(is.na(Idade)),!(is.na(Resultado.Pool)),!(is.na(Sexo)))
+
+ggplot(data=graph,aes(x=Idade,fill=Resultado.Pool)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = Total))+
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = Total))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Resultado.Pool == "Não Detectável"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = Resultado.Pool))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Resultado.Pool == "Não Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = Resultado.Pool))+
+  coord_flip()+ 
+  scale_fill_manual('Resultado do Pool', values = c("Todos" = "#0e0e0e", "Não Detectável" = "#5a5a5a"))+
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Pirâmide etária dos resultados dos Pools')+
+  scale_y_continuous(labels=abs(seq(-50,50,by = 20)), breaks=seq(-50,50,by = 20), limits = c(-55,55))+
+  annotate("text", x=90, y=c(-40,40), label= c("Feminino","Masculino"),size = 7, colour = "black")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+graph <- base_completa %>% filter(Resultado.Pool != 'Não Detectável' |
+                           is.na(Resultado.Pool != 'Não Detectável')) %>% 
+    select(Resultado.Indiv.,Idade,Sexo) %>% 
+  mutate(Idade = as.integer(Idade),
+         Total = 'Todos') %>% 
+  filter(!(is.na(Idade)),!(is.na(Resultado.Indiv.)),!(is.na(Sexo)))
+
+ggplot(data=graph,aes(x=Idade,fill=Resultado.Indiv.)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = Total))+
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = Total))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Resultado.Indiv. == "Detectável"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = Resultado.Indiv.))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Resultado.Indiv. == "Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = Resultado.Indiv.))+
+  coord_flip()+ 
+  scale_fill_manual('Resultado Individual', values = c("Todos" = "#0e0e0e", "Detectável" = "#5a5a5a"))+
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Pirâmide etária dos resultados Individuais')+
+  scale_y_continuous(labels=abs(seq(-50,50,by = 20)), breaks=seq(-50,50,by = 20), limits = c(-40,40))+
+  annotate("text", x=90, y=c(-30,30), label= c("Feminino","Masculino"),size = 7, colour = "black")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+graph <- base_completa %>% mutate(Final = case_when(
+  Resultado.Pool == 'Não Detectável' ~ 'Não Detectável',
+  TRUE ~ Resultado.Indiv.)) %>% 
+    select(Final,Idade,Sexo) %>% 
+  mutate(Idade = as.integer(Idade),
+         Total = 'Todos') %>% 
+  filter(!(is.na(Idade)),!(is.na(Final)),!(is.na(Sexo)))
+
+ggplot(data=graph,aes(x=Idade,fill=Final)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = Total))+
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = Total))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Final == "Detectável"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = Final))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Final == "Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = Final))+
+  coord_flip()+ 
+  scale_fill_manual('Resultado Final', values = c("Todos" = "#0e0e0e", "Detectável" = "#5a5a5a"))+
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Pirâmide etária dos resultados finais')+
+  scale_y_continuous(labels=abs(seq(-50,50,by = 20)), breaks=seq(-50,50,by = 20), limits = c(-60,60))+
+  annotate("text", x=90, y=c(-30,30), label= c("Feminino","Masculino"),size = 7, colour = "black")
+```
