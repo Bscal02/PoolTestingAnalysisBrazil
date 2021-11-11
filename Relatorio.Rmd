@@ -1,0 +1,423 @@
+---
+title: "Relatório"
+date: "`r format(Sys.time(), '%d/%m/%Y')`"
+output: html_document
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(plyr)
+library(cowplot)
+base_completa <- read.csv('Dados/base_completa.csv')
+```
+
+# Distribuição dos resultados
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
+graph <- base_completa %>% group_by(Id_Pool) %>% 
+  filter(Resultado.Indiv. != 'Inconclusivo' | is.na(Resultado.Indiv.)) %>% 
+  mutate(Resultado.Pool = ifelse(Resultado.Pool != 'Não Detectável' | is.na(Resultado.Pool), 1,0),
+         Resultado.Indiv. = ifelse(Resultado.Indiv. != 'Não Detectável', 1,0)) %>% 
+  dplyr::summarise(n = n(),
+                   Resultado.Pool = sum(Resultado.Pool),
+                   PosIndiv = sum(Resultado.Indiv.)) %>% 
+  mutate(Resultado.Pool = ifelse(Resultado.Pool == 0,0,1),
+         Freq = n) %>% 
+  group_by(Freq,Resultado.Pool) %>% 
+  dplyr::summarise(PosIndiv = sum(PosIndiv),
+                   n = sum(n)) %>% 
+  mutate(Freq = ifelse(Resultado.Pool == 1,Freq + 5,Freq))
+
+ggplot(graph,aes(y=n,x=Freq)) + 
+  geom_bar(data=subset(graph,Resultado.Pool==0),
+           stat='identity',
+           color = 'black',
+           aes(fill = 'Pool - Não detectável'))+
+  geom_bar(data=subset(graph,Resultado.Pool==1),
+           stat='identity',
+           color = 'black',
+           aes(fill = 'Pool - Detectável / Indeterminado'))+
+  geom_bar(data=subset(graph,Resultado.Pool==1),
+           stat='identity',
+           color = 'black',
+           aes(fill = 'Individual - Detectável',
+               y = PosIndiv))+
+  geom_vline(xintercept = 5)+
+  labs(title = 'Número de pacientes por tamanho do Pool e resultado',
+       y = 'Número de pacientes', 
+       x = 'Tamanho do Pool', 
+       fill = '')+
+  scale_x_continuous(labels=c(1:4,'',1:4), breaks=1:9, limits = c(0,10))+
+  scale_fill_manual(values = c('Pool - Não detectável' = '#ff938c','Pool - Detectável / Indeterminado' = '#bfff8c',
+                               'Individual - Detectável' = '#55c000'))+
+  theme_bw()+  
+  theme(legend.position = "top")
+
+graph <- base_completa %>% #filter(Resultado.Indiv. != 'Inconclusivo' | is.na(Resultado.Indiv.)) %>% 
+  mutate(Resultado.Pool = ifelse(Resultado.Pool != 'Não Detectável' | is.na(Resultado.Pool), 1,0),
+         Resultado.Indiv. = case_when(
+           Resultado.Indiv. == 'Não Detectável' ~ 1,
+           Resultado.Indiv. == 'Detectável' ~ 0),
+           #TRUE ~ NA),
+         Resultado = case_when(
+           Resultado.Pool == 0 ~ 'Pool - Não detectável',
+           Resultado.Pool == 1 & Resultado.Indiv. == 0 ~ 'Individual - Não detectável',
+           Resultado.Pool == 1 & Resultado.Indiv. == 1 ~ 'Individual - Detectável',
+           TRUE ~ 'Individual - Inconclusivo')) %>% 
+  group_by(Resultado) %>% 
+  dplyr::summarise(n = n()) %>% arrange(desc(n))
+
+ggplot(graph,aes(x=Resultado,y=n)) +
+  geom_bar(stat='identity',
+           color = 'black',
+           aes(fill = Resultado))+
+  scale_x_discrete(limits = c('Pool - Não detectável',
+                              'Individual - Não detectável',
+                              'Individual - Detectável',
+                              'Individual - Inconclusivo'))+
+  scale_fill_manual(values = c('Pool - Não detectável' = '#ff938c',
+                               'Individual - Não detectável' = '#bfff8c',
+                               'Individual - Detectável' = '#55c000',
+                               'Individual - Inconclusivo' = '#8cbfff'))+
+  theme_bw()+  
+  theme(legend.position = "none")+
+  labs(title = 'Número de pacientes por resultado',
+       y = 'Número de pacientes')
+```
+
+# Distribuição Etária dos resultados
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
+graph <- base_completa %>% select(Resultado.Pool,Idade,Sexo) %>% 
+  mutate(Resultado.Pool = as.factor(ifelse(Resultado.Pool != 'Não Detectável' |
+                                   is.na(Resultado.Pool),
+                                 'Indeterminado/Positivo','Não Detectável')),
+         Idade = as.integer(Idade)) %>% 
+  filter(!(is.na(Idade)),!(is.na(Resultado.Pool)),!(is.na(Sexo)))
+
+legenda_masc <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="M"),
+               aes(y=..count.., fill = 'Total'))+
+  geom_density(data=subset(graph,Sexo=="M" & Resultado.Pool == "Não Detectável"),
+               aes(y=..count.., fill = 'Não Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#8cbfff','Não Detectáveis' = '#466cff'))+
+  labs(fill = 'Sexo Masculino:')+
+  theme(legend.position = "top")
+  
+legenda_fem <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="F"),
+               aes(y=..count.., fill = 'Total'))+
+  geom_density(data=subset(graph,Sexo=="F" & Resultado.Pool == "Não Detectável"),
+               aes(y=..count.., fill = 'Não Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#ffa58b','Não Detectáveis' = '#fe5246'))+
+  labs(fill = 'Sexo Feminino:')+
+  theme(legend.position = "top")
+  
+Graf_completo <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="M"),
+                 aes(y=..count.., fill = 'Amostra Masculina'))+
+  geom_density(data=subset(graph,Sexo=="F"),
+                 aes(y=(-1)*..count.., fill = 'Amostra Feminina'))+
+  geom_density(data=subset(graph,Sexo=="M" & Resultado.Pool == "Não Detectável"),
+                 aes(y=..count.., fill = 'Não Detectáveis masculinos'))+
+  geom_density(data=subset(graph,Sexo=="F" & Resultado.Pool == "Não Detectável"),
+                 aes(y=(-1)*..count.., fill = 'Não Detectáveis femininos'))+
+  coord_flip()+ 
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Curva de densidade dos resultados dos Pools', fill = '')+
+  scale_y_continuous(labels=abs(seq(-25,25,by = 10)), breaks=seq(-25,25,by = 10), limits = c(-25,25))+
+  scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Não Detectáveis femininos' = '#fe5246',
+                               'Amostra Masculina' = '#8cbfff','Não Detectáveis masculinos' = '#466cff'))+
+  theme(legend.position = "none")
+
+plot_grid(
+  Graf_completo
+  , plot_grid(
+    get_legend(legenda_fem)
+    , get_legend(legenda_masc)
+    , nrow = 1
+  )
+  , nrow = 2
+  , rel_heights = c(8,1)
+)
+
+legenda_masc <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Total'))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Resultado.Pool == "Não Detectável"),
+               binwidth = 2,
+               aes(y=..count.., fill = 'Não Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#8cbfff','Não Detectáveis' = '#466cff'))+
+  labs(fill = 'Sexo Masculino:')+
+  theme(legend.position = "top")
+
+legenda_fem <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Total'))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Resultado.Pool == "Não Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Não Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#ffa58b','Não Detectáveis' = '#fe5246'))+
+  labs(fill = 'Sexo Feminino:')+
+  theme(legend.position = "top")
+  
+  
+Graf_completo <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Amostra Masculina'))+
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Amostra Feminina'))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Resultado.Pool == "Não Detectável"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Não Detectáveis masculinos'))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Resultado.Pool == "Não Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Não Detectáveis femininos'))+
+  coord_flip()+ 
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Pirâmide etária dos resultados dos Pools', fill = '')+
+  scale_y_continuous(labels=abs(seq(-50,50,by = 20)), breaks=seq(-50,50,by = 20), limits = c(-55,55))+
+  scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Não Detectáveis femininos' = '#fe5246',
+                               'Amostra Masculina' = '#8cbfff','Não Detectáveis masculinos' = '#466cff'))+
+  theme(legend.position = "none")
+
+plot_grid(
+  Graf_completo
+  , plot_grid(
+    get_legend(legenda_fem)
+    , get_legend(legenda_masc)
+    , nrow = 1
+  )
+  , nrow = 2
+  , rel_heights = c(8,1)
+)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
+graph <- base_completa %>% filter(Resultado.Pool != 'Não Detectável' |
+                           is.na(Resultado.Pool != 'Não Detectável')) %>% 
+    select(Resultado.Indiv.,Idade,Sexo) %>% 
+  mutate(Idade = as.integer(Idade)) %>% 
+  filter(!(is.na(Idade)),!(is.na(Resultado.Indiv.)),!(is.na(Sexo)))
+
+legenda_masc <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="M"),
+               aes(y=..count.., fill = 'Total'))+
+  geom_density(data=subset(graph,Sexo=="M" & Resultado.Indiv. == "Detectável"),
+               aes(y=..count.., fill = 'Detectáveis'))+
+  labs(fill = 'Sexo Masculino:')+
+  scale_fill_manual(values = c('Total' = '#8cbfff','Detectáveis' = '#466cff'))+
+  theme(legend.position = "top")
+
+legenda_fem <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="F"),
+               aes(y=..count.., fill = 'Total'))+
+  geom_density(data=subset(graph,Sexo=="F" & Resultado.Indiv. == "Detectável"),
+               aes(y=..count.., fill = 'Detectáveis'))+
+  labs(fill = 'Sexo Feminino:')+
+  scale_fill_manual(values = c('Total' = '#ffa58b','Detectáveis' = '#fe5246'))+
+  theme(legend.position = "top")
+
+Graf_completo <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="M"),
+                 aes(y=..count.., fill = 'Amostra Masculina'))+
+  geom_density(data=subset(graph,Sexo=="F"),
+                 aes(y=(-1)*..count.., fill = 'Amostra Feminina'))+
+  geom_density(data=subset(graph,Sexo=="M" & Resultado.Indiv. == "Detectável"),
+                 aes(y=..count.., fill = 'Detectáveis masculinos'))+
+  geom_density(data=subset(graph,Sexo=="F" & Resultado.Indiv. == "Detectável"),
+                 aes(y=(-1)*..count.., fill = 'Detectáveis femininos'))+
+  coord_flip()+ 
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Curva de densidade dos resultados Individuais', fill = '')+
+  scale_y_continuous(labels=abs(seq(-15,15,by = 5)), breaks=seq(-15,15,by = 5), limits = c(-15,15))+
+  scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Detectáveis femininos' = '#fe5246',
+                               'Amostra Masculina' = '#8cbfff','Detectáveis masculinos' = '#466cff'))+
+  theme(legend.position = "none")
+
+plot_grid(
+  Graf_completo
+  , plot_grid(
+    get_legend(legenda_fem)
+    , get_legend(legenda_masc)
+    , nrow = 1
+  )
+  , nrow = 2
+  , rel_heights = c(8,1)
+)
+
+legenda_masc <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Total'))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Resultado.Indiv. == "Detectável"),
+               binwidth = 2,
+               aes(y=..count.., fill = 'Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#8cbfff','Detectáveis' = '#466cff'))+
+  labs(fill = 'Sexo Masculino:')+
+  theme(legend.position = "top")
+
+legenda_fem <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Total'))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Resultado.Indiv. == "Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#ffa58b','Detectáveis' = '#fe5246'))+
+  labs(fill = 'Sexo Feminino:')+
+  theme(legend.position = "top")
+  
+  
+Graf_completo <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Amostra Masculina'))+
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Amostra Feminina'))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Resultado.Indiv. == "Detectável"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Detectáveis masculinos'))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Resultado.Indiv. == "Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Detectáveis femininos'))+
+  coord_flip()+ 
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Pirâmide etária dos resultados Individuais', fill = '')+
+  scale_y_continuous(labels=abs(seq(-30,30,by = 10)), breaks=seq(-30,30,by = 10), limits = c(-35,35))+
+  scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Detectáveis femininos' = '#fe5246',
+                               'Amostra Masculina' = '#8cbfff','Detectáveis masculinos' = '#466cff'))+
+  theme(legend.position = "none")
+
+plot_grid(
+  Graf_completo
+  , plot_grid(
+    get_legend(legenda_fem)
+    , get_legend(legenda_masc)
+    , nrow = 1
+  )
+  , nrow = 2
+  , rel_heights = c(8,1)
+)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
+graph <- base_completa %>% mutate(Final = case_when(
+  Resultado.Pool == 'Não Detectável' ~ 'Não Detectável',
+  TRUE ~ Resultado.Indiv.)) %>% 
+    select(Final,Idade,Sexo) %>% 
+  mutate(Idade = as.integer(Idade)) %>% 
+  filter(!(is.na(Idade)),!(is.na(Final)),!(is.na(Sexo)))
+
+legenda_masc <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="M"),
+               aes(y=..count.., fill = 'Total'))+
+  geom_density(data=subset(graph,Sexo=="M" & Final == "Detectável"),
+               aes(y=..count.., fill = 'Detectáveis'))+
+  labs(fill = 'Sexo Masculino:')+
+  scale_fill_manual(values = c('Total' = '#8cbfff','Detectáveis' = '#466cff'))+
+  theme(legend.position = "top")
+  
+legenda_fem <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="F"),
+               aes(y=..count.., fill = 'Total'))+
+  geom_density(data=subset(graph,Sexo=="F" & Final == "Detectável"),
+               aes(y=..count.., fill = 'Detectáveis'))+
+  labs(fill = 'Sexo Feminino:')+
+  scale_fill_manual(values = c('Total' = '#ffa58b','Detectáveis' = '#fe5246'))+
+  theme(legend.position = "top")
+
+Graf_completo <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_density(data=subset(graph,Sexo=="M"),
+               aes(y=..count.., fill = 'Amostra Masculina'))+
+  geom_density(data=subset(graph,Sexo=="F"),
+               aes(y=(-1)*..count.., fill = 'Amostra Feminina'))+
+  geom_density(data=subset(graph,Sexo=="M" & Final == "Detectável"),
+               aes(y=..count.., fill = 'Detectáveis masculinos'))+
+  geom_density(data=subset(graph,Sexo=="F" & Final == "Detectável"),
+               aes(y=(-1)*..count.., fill = 'Detectáveis femininos'))+
+  coord_flip()+ 
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Curva de densidade dos resultados finais')+
+  scale_y_continuous(labels=abs(seq(-25,25,by = 10)), breaks=seq(-25,25,by = 10), limits = c(-25,25))+
+  scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Detectáveis femininos' = '#fe5246',
+                               'Amostra Masculina' = '#8cbfff','Detectáveis masculinos' = '#466cff'))+
+  theme(legend.position = "none")
+
+plot_grid(
+  Graf_completo
+  , plot_grid(
+    get_legend(legenda_fem)
+    , get_legend(legenda_masc)
+    , nrow = 1
+  )
+  , nrow = 2
+  , rel_heights = c(8,1)
+)
+
+legenda_masc <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Total'))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Final == "Detectável"),
+               binwidth = 2,
+               aes(y=..count.., fill = 'Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#8cbfff','Detectáveis' = '#466cff'))+
+  labs(fill = 'Sexo Masculino:')+
+  theme(legend.position = "top")
+
+legenda_fem <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Total'))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Final == "Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Detectáveis'))+
+  scale_fill_manual(values = c('Total' = '#ffa58b','Detectáveis' = '#fe5246'))+
+  labs(fill = 'Sexo Feminino:')+
+  theme(legend.position = "top")
+  
+  
+Graf_completo <- ggplot(data=graph,aes(x=Idade)) + 
+  geom_histogram(data=subset(graph,Sexo=="M"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Amostra Masculina'))+
+  geom_histogram(data=subset(graph,Sexo=="F"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Amostra Feminina'))+
+  geom_histogram(data=subset(graph,Sexo=="M" & Final == "Detectável"),
+                 binwidth = 2,
+                 aes(y=..count.., fill = 'Detectáveis masculinos'))+
+  geom_histogram(data=subset(graph,Sexo=="F" & Final == "Detectável"),
+                 binwidth = 2,
+                 aes(y=(-1)*..count.., fill = 'Detectáveis femininos'))+
+  coord_flip()+ 
+  geom_hline(yintercept = 0)+
+  theme_bw()+
+  labs(y = 'Frequência', title = 'Pirâmide etária dos resultados finais', fill = '')+
+  scale_y_continuous(labels=abs(seq(-50,50,by = 20)), breaks=seq(-50,50,by = 20), limits = c(-55,55))+
+  scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Detectáveis femininos' = '#fe5246',
+                               'Amostra Masculina' = '#8cbfff','Detectáveis masculinos' = '#466cff'))+
+  theme(legend.position = "none")
+
+plot_grid(
+  Graf_completo
+  , plot_grid(
+    get_legend(legenda_fem)
+    , get_legend(legenda_masc)
+    , nrow = 1
+  )
+  , nrow = 2
+  , rel_heights = c(8,1)
+)
+```
