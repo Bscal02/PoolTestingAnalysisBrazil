@@ -48,7 +48,8 @@ ggplot(graph,aes(y=n,x=Freq)) +
        x = 'Tamanho do Pool', 
        fill = '')+
   scale_x_continuous(labels=c(1:4,'',1:4), breaks=1:9, limits = c(0,10))+
-  scale_fill_manual(values = c('Pool - Não detectável' = '#ff938c','Pool - Detectável / Indeterminado' = '#bfff8c',
+  scale_fill_manual(values = c('Pool - Não detectável' = '#FF3FD4',
+                               'Pool - Detectável / Indeterminado' = '#bfff8c',
                                'Individual - Detectável' = '#55c000'))+
   theme_bw()+  
   theme(legend.position = "top")
@@ -75,10 +76,10 @@ ggplot(graph,aes(x=Resultado,y=n)) +
                               'Individual - Não detectável',
                               'Individual - Detectável',
                               'Individual - Inconclusivo'))+
-  scale_fill_manual(values = c('Pool - Não detectável' = '#ff938c',
+  scale_fill_manual(values = c('Pool - Não detectável' = '#FF3FD4',
                                'Individual - Não detectável' = '#bfff8c',
                                'Individual - Detectável' = '#55c000',
-                               'Individual - Inconclusivo' = '#8cbfff'))+
+                               'Individual - Inconclusivo' = '#3fd4ff'))+
   theme_bw()+  
   theme(legend.position = "none")+
   labs(title = 'Número de pacientes por resultado',
@@ -237,7 +238,9 @@ Graf_completo <- ggplot(data=graph,aes(x=Idade)) +
   geom_hline(yintercept = 0)+
   theme_bw()+
   labs(y = 'Frequência', title = 'Curva de densidade dos resultados Individuais', fill = '')+
-  scale_y_continuous(labels=abs(seq(-15,15,by = 5)), breaks=seq(-15,15,by = 5), limits = c(-15,15))+
+  #scale_y_continuous(labels=abs(seq(-18,18,by = 6)), breaks=seq(-18,18,by = 6),
+  scale_y_continuous(labels=abs(seq(-25,25,by = 10)), breaks=seq(-25,25,by = 10),
+                     limits = c(-25,25))+
   scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Detectáveis femininos' = '#fe5246',
                                'Amostra Masculina' = '#8cbfff','Detectáveis masculinos' = '#466cff'))+
   theme(legend.position = "none")
@@ -293,7 +296,9 @@ Graf_completo <- ggplot(data=graph,aes(x=Idade)) +
   geom_hline(yintercept = 0)+
   theme_bw()+
   labs(y = 'Frequência', title = 'Pirâmide etária dos resultados Individuais', fill = '')+
-  scale_y_continuous(labels=abs(seq(-30,30,by = 10)), breaks=seq(-30,30,by = 10), limits = c(-35,35))+
+  #scale_y_continuous(labels=abs(seq(-30,30,by = 10)), breaks=seq(-30,30,by = 10),
+  scale_y_continuous(labels=abs(seq(-50,50,by = 20)), breaks=seq(-50,50,by = 20),
+                                        limits = c(-55,55))+
   scale_fill_manual(values = c('Amostra Feminina' = '#ffa58b','Detectáveis femininos' = '#fe5246',
                                'Amostra Masculina' = '#8cbfff','Detectáveis masculinos' = '#466cff'))+
   theme(legend.position = "none")

@@ -11,8 +11,7 @@ dados_pool <- read_xlsx('Dados/Resultados Pool Testing - Final - Correto.xlsx', 
   select(-c('#','Prioridade?',"Data de\r\nRecebimento","ID Placa Pool","Data da Reação Pool","CT E\r\nPool",
             "CT RP\r\nPool","ID Placa Indiv.","Data da Reação Indiv.","CT E\r\nIndiv.","CT RP\r\nIndiv.",
             "Data de Envio de Resultado")) %>% 
-  rename(Id_Pool = `Pool #`,
-         `Resultado Indiv.` = `Resultado\r\nIndiv.`)
+  rename(Id_Pool = `Pool #`, `Resultado Indiv.` = `Resultado\r\nIndiv.`)
 
 ## ID --
 
@@ -481,5 +480,12 @@ base_completa <- base_completa[-which(base_completa$Idade.x != base_completa$Ida
                                         base_completa$Sexo.x != base_completa$Sexo.y),] %>% 
   select(-c(Idade.y,Sexo.y)) %>% 
   rename(Idade = Idade.x, Sexo = Sexo.x)
+
+PoolsValidos <- base_completa %>% group_by(Id_Pool) %>% 
+    dplyr::summarise(n=n()) %>% 
+    filter(n > 1) %>% pull(Id_Pool)
+  
+base_completa <- base_completa %>%
+  filter(Id_Pool %in% PoolsValidos)
 
 write.csv(base_completa,'Dados/base_completa.csv', row.names = FALSE)
